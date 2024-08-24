@@ -4,7 +4,7 @@
 
 #include "../lib/hw.h"
 #include "../h/MemoryAllocator.hpp"
-
+#include "../test/printing.hpp"
 
 DataBlock* MemoryAllocator::free = nullptr;
 DataBlock* MemoryAllocator::used = nullptr;
@@ -16,14 +16,22 @@ int MemoryAllocator::deleteArrayCalled = 0;
 
 void *MemoryAllocator::mem_alloc(size_t size) {
     size_t newSize;
+    //printString("Usao u mem alloc\n");
     if(size%MEM_BLOCK_SIZE != 0) {
+        //printString("Usao u if\n");
         newSize = ((size + MEM_BLOCK_SIZE - 1) / MEM_BLOCK_SIZE) * MEM_BLOCK_SIZE;
     }
     else {
+        //printString("Usao u else\n");
         newSize = size;
     }
+    //printString("Requested size = ");
+    //printInt(newSize);
 
     for(DataBlock* curr = MemoryAllocator::free; curr != nullptr; curr=curr->next) {
+        //printString("Usao u for\n");
+        //printString("curr size =  ");
+        //printInt(curr->size);
         if(curr->size<newSize) continue;
         if(curr->size > newSize) {
             //new fragment needs to be created
@@ -38,6 +46,7 @@ void *MemoryAllocator::mem_alloc(size_t size) {
             if(curr->next) curr->next->prev = newBlock;
             newBlock->prev = curr->prev;
             newBlock->next = curr->next;
+            //printString("Zavrsio azuriranje free liste\n");
 
             newBlock->size = curr->size - newSize - sizeof(DataBlock);
             curr->size = newSize;
@@ -65,6 +74,7 @@ void *MemoryAllocator::mem_alloc(size_t size) {
                 if(curr->next) curr->next->prev = curr;
                 currUsed->next = curr;
             }
+            //printString("Placed block in used list\n");
         }
         else {
             //They are the exact same size
@@ -97,7 +107,9 @@ void *MemoryAllocator::mem_alloc(size_t size) {
                 if(curr->next) curr->next->prev = curr;
                 currUsed->next = curr;
             }
+            //printString("Placed block in used list for exact size\n");
         }
+        //printString("went to return\n");
         return (char*)curr + sizeof(DataBlock);
     }
     return nullptr; //should not enter here
@@ -159,6 +171,3 @@ void MemoryAllocator::tryToJoin(DataBlock *curr) {
         if(curr->next) curr->next->prev = curr;
     }
 }
-
-
-

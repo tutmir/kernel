@@ -5,7 +5,7 @@
 #include "../h/syscall_c.h"
 #include "../h/Riscv.hpp"
 #include "../lib/console.h"
-
+#include "../test/printing.hpp"
 
 
 void Riscv::handleSupervisorTrap()
@@ -176,14 +176,14 @@ void Riscv::handleSupervisorTrap()
 
 int mem_free (void* ptr) {
 
-    __asm__ volatile("mv a1, %0" : : "r"(ptr));
-    __asm__ volatile("li a0, 0x02");
-    __asm__ volatile("ecall");
+  __asm__ volatile("mv a1, %0" : : "r"(ptr));
+  __asm__ volatile("li a0, 0x02");
+  __asm__ volatile("ecall");
 
 
-    uint64 returnValue;
-    __asm__ volatile("mv %0, a0" : "=r"(returnValue));
-    return (int)returnValue;
+  uint64 returnValue;
+  __asm__ volatile("mv %0, a0" : "=r"(returnValue));
+  return (int)returnValue;
 }
 
 void* mem_alloc(size_t size) {
@@ -263,8 +263,11 @@ void thread_start(TCB* thread)
 int sem_open(sem_t *handle, unsigned init)
 {
   uint64 pv;
-  __asm__ volatile("mv a2, %0" : : "r"(handle));
-  __asm__ volatile("mv a1, %0" : : "r"(init));
+  printString("Init value is: ");
+  printInt(init);
+  printString("\n");
+  __asm__ volatile("mv a1, %0" : : "r"(handle));
+  __asm__ volatile("mv a2, %0" : : "r"(init));
   __asm__ volatile("li a0, 0x21");
   __asm__ volatile("ecall");
   __asm__ volatile("mv %0, a0" : "=r"(pv));

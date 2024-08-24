@@ -12,7 +12,7 @@ class MojSemafor
   bool otvoren;
   int vrednost;
 
-  MojSemafor(int v = 1);
+  MojSemafor(unsigned v = 1);
   ~MojSemafor();
   public:
 
@@ -24,6 +24,7 @@ class MojSemafor
    int trywait();
 
    static int sem_open(sem_t*, unsigned);
+
 };
 
 

@@ -18,11 +18,18 @@ static void producerKeyboard(void *arg) {
 
     int key;
     int i = 0;
-    while ((key = getc()) != 0x1b) {
+    printString("Entered keyboard producer: ");
+    printInt(data->id);
+    printString("\n");
+    while ((key = getc()) != 0x1b && i!=15) {
+        printString("Entered while loop for keyboard prod\n");
         data->buffer->put(key);
         i++;
-
+        printString("Keyboard producer wrote: ");
+        printInt(i);
+        printString("\n");
         if (i % (10 * data->id) == 0) {
+            printString("Keyboard producer has dispatched \n");
             thread_dispatch();
         }
     }
@@ -37,8 +44,14 @@ static void producer(void *arg) {
     struct thread_data *data = (struct thread_data *) arg;
 
     int i = 0;
+    printString("Entered producer: ");
+    printInt(data->id);
+    printString("\n");
     while (!threadEnd) {
         data->buffer->put(data->id + '0');
+        printString("Producer wrote: ");
+        printInt(data->id);
+        printString("\n");
         i++;
 
         if (i % (10 * data->id) == 0) {
@@ -53,12 +66,15 @@ static void consumer(void *arg) {
     struct thread_data *data = (struct thread_data *) arg;
 
     int i = 0;
+    printString("Entered consumer: ");
+    printInt(data->id);
+    printString("\n");
     while (!threadEnd) {
         int key = data->buffer->get();
         i++;
-
+        printString("Consumer read");
         putc(key);
-
+        printString("\n");
         if (i % (5 * data->id) == 0) {
             thread_dispatch();
         }
@@ -101,19 +117,22 @@ void producerConsumer_C_API() {
     }
 
     Buffer *buffer = new Buffer(n);
+    printString("Control point 1\n");
 
     sem_open(&waitForAll, 0);
+    printString("Control point 2!\n");
 
     thread_t threads[threadNum];
     thread_t consumerThread;
-
+    printString("Control point 3!\n");
     struct thread_data data[threadNum + 1];
-
+    printString("Control point 4!\n");
     data[threadNum].id = threadNum;
     data[threadNum].buffer = buffer;
     data[threadNum].wait = waitForAll;
+    printString("Control point 5!\n");
     thread_create(&consumerThread, consumer, data + threadNum);
-
+    printString("Control point 6!\n");
     for (int i = 0; i < threadNum; i++) {
         data[i].id = i;
         data[i].buffer = buffer;
@@ -123,15 +142,15 @@ void producerConsumer_C_API() {
                       i > 0 ? producer : producerKeyboard,
                       data + i);
     }
-
+    printString("Control point 7!\n");
     thread_dispatch();
-
+    printString("Control point 8!\n");
     for (int i = 0; i <= threadNum; i++) {
         sem_wait(waitForAll);
     }
-
+    printString("Control point 9!\n");
     sem_close(waitForAll);
-
+    printString("Control point 10!\n");
     delete buffer;
 
 }

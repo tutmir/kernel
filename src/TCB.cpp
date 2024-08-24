@@ -4,7 +4,7 @@
 
 #include "../h/TCB.hpp"
 #include "../h/syscall_c.h"
-
+#include "../test/printing.hpp"
 
 TCB* TCB::trenutnaNit = nullptr;
 
@@ -23,6 +23,7 @@ void TCB::wrapper()
 
 void TCB::dispatch()
 {
+  printString("Usao u dispatch\n");
   TCB* staraNit = trenutnaNit;
   if(!staraNit->daLiJeZavrsena() && !staraNit->daLiJeBlokirana())
   {

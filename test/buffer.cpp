@@ -1,8 +1,12 @@
 #include "buffer.hpp"
+#include "../test/printing.hpp"
 
 Buffer::Buffer(int _cap) : cap(_cap + 1), head(0), tail(0) {
     buffer = (int *)mem_alloc(sizeof(int) * cap);
+    printString("Control point 3\n");
     sem_open(&itemAvailable, 0);
+
+    printString("Control point 4\n");
     sem_open(&spaceAvailable, _cap);
     sem_open(&mutexHead, 1);
     sem_open(&mutexTail, 1);
@@ -27,14 +31,19 @@ Buffer::~Buffer() {
 }
 
 void Buffer::put(int val) {
+    printString("Entered put\n");
     sem_wait(spaceAvailable);
+    //printString("Waited on spaceAvaileble\n");
 
     sem_wait(mutexTail);
+    //printString("Waited on mutex\n");
     buffer[tail] = val;
     tail = (tail + 1) % cap;
     sem_signal(mutexTail);
+    //printString("Signaled mutex\n");
 
     sem_signal(itemAvailable);
+    //printString("Signaled itemAvailable\n");
 
 }
 
