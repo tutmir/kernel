@@ -7,6 +7,7 @@
 #include "../lib/console.h"
 
 
+
 void Riscv::handleSupervisorTrap()
 {
   uint64 scause;
@@ -27,20 +28,25 @@ void Riscv::handleSupervisorTrap()
      //mem_alloc
      case 0x01:
      {
-       uint64 velicina;
-       __asm__ volatile ("mv %0, a1" : "=r" (velicina));
+       size_t size;
+       void* ptr;
+       __asm__ volatile("mv %0, a1" : "=r" (size));
+       ptr = MemoryAllocator::mem_alloc(size);
 
-       void *p = MemoryAllocator::mem_alloc(velicina);
-       __asm__ volatile ( "csrw sscratch, %0" : : "r"( p ) );
+       __asm__ volatile("mv t0, %0" : : "r"(ptr));
+       __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
      //mem_free
      case 0x02:
      {
-       void *memorija;
-       __asm__ volatile ("mv %0, a1" : "=r" (memorija));
-       int p = MemoryAllocator::mem_free(memorija);
-       __asm__ volatile ( "csrw sscratch, %0" : : "r"( p ) );
+       void* memptr;
+       __asm__ volatile("mv %0, a1" : "=r" (memptr));
+
+       pv = MemoryAllocator::mem_free(memptr);
+
+       __asm__ volatile("mv t0, %0" : : "r"(pv));
+       __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
      //thread_create
@@ -95,6 +101,53 @@ void Riscv::handleSupervisorTrap()
        __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
        break;
      }
+     //sem_open
+     case 0x21:
+     {
+       sem_t *handle;
+       uint64 init;
+       __asm__ volatile("mv %0, a1" : "=r"(handle));
+       __asm__ volatile("mv %0, a2" : "=r"(init));
+       pv = MojSemafor::sem_open(handle, init);
+       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       break;
+     }
+     //sem_close
+     case 0x22:
+     {
+       sem_t handle;
+       __asm__ volatile("mv %0, a1" : "=r"(handle));
+       pv = handle->close();
+       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       break;
+     }
+     //sem_wait
+     case 0x23:
+     {
+       sem_t id;
+       __asm__ volatile("mv %0, a1" : "=r"(id));
+       pv = id->wait();
+       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       break;
+     }
+     //sem_signal
+     case 0x24:
+     {
+       sem_t id;
+       __asm__ volatile("mv %0, a1" : "=r"(id));
+       pv = id->signal();
+       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       break;
+     }
+     //sem_trywait
+     case 0x26:
+     {
+       sem_t id;
+       __asm__ volatile("mv %0, a1" : "=r"(id));
+       pv = id->trywait();
+       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       break;
+     }
      //getc
      case 0x41:
      {
@@ -117,37 +170,39 @@ void Riscv::handleSupervisorTrap()
     __asm__ volatile ( "csrw sstatus, %0" : : "r"( sstatus ) );
     __asm__ volatile ( "csrw sepc, %0" : : "r"( sepc ) );
   }
-  else if(scause == 0x8000000000000001UL)
-  {
-    __asm__ volatile ("csrc sip, 0x2");
+
+}
+
+
+int mem_free (void* ptr) {
+
+    __asm__ volatile("mv a1, %0" : : "r"(ptr));
+    __asm__ volatile("li a0, 0x02");
+    __asm__ volatile("ecall");
+
+
+    uint64 returnValue;
+    __asm__ volatile("mv %0, a0" : "=r"(returnValue));
+    return (int)returnValue;
+}
+
+void* mem_alloc(size_t size) {
+  size_t newSize;
+  if(size%MEM_BLOCK_SIZE != 0) {
+    newSize = ((size + MEM_BLOCK_SIZE - 1) / MEM_BLOCK_SIZE) * MEM_BLOCK_SIZE;
   }
-  else{}
+  else {
+    newSize = size;
+  }
 
-}
+  __asm__ volatile("mv a1, %0" : : "r"(newSize));
+  __asm__ volatile("li a0, 0x01");
+  __asm__ volatile("ecall");
 
-size_t velicinaParceta = sizeof(MemoryAllocator::Parce);
-
-void* mem_alloc(size_t velicina)
-{
-  velicina = ((velicina + velicinaParceta) % MEM_BLOCK_SIZE == 0 ? (velicina + velicinaParceta)/MEM_BLOCK_SIZE : (velicina + velicinaParceta)/MEM_BLOCK_SIZE + 1);
-  void *adresa;
-
-  __asm__ volatile ("mv a1, %0" : : "r" (velicina));
-  __asm__ volatile ("li a0, 0x01");
-  __asm__ volatile ("ecall");
-  __asm__ volatile ("mv %0, a0" : "=r" (adresa));
-  return adresa;
-}
-
-int mem_free(void* memorija)
-{
-  uint64 pv;
-
-  __asm__ volatile ("mv a1, %0" : : "r" (memorija));
-  __asm__ volatile ("li a0, 0x02");
-  __asm__ volatile ("ecall");
-  __asm__ volatile ("mv %0, a0" : "=r" (pv));
-  return pv;
+  //check this
+  void *returnValue;
+  __asm__ volatile("mv %0, a0" : "=r"(returnValue));
+  return returnValue;
 }
 
 int thread_create(thread_t* handle, void(*start_routine) (void*),void* argumenti)
@@ -205,9 +260,60 @@ void thread_start(TCB* thread)
   __asm__ volatile ("ecall");
 }
 
+int sem_open(sem_t *handle, unsigned init)
+{
+  uint64 pv;
+  __asm__ volatile("mv a2, %0" : : "r"(handle));
+  __asm__ volatile("mv a1, %0" : : "r"(init));
+  __asm__ volatile("li a0, 0x21");
+  __asm__ volatile("ecall");
+  __asm__ volatile("mv %0, a0" : "=r"(pv));
+  return pv;
+}
+
+int sem_close(sem_t handle)
+{
+  uint64 pv;
+  __asm__ volatile("mv a1, %0" : : "r"(handle));
+  __asm__ volatile("li a0, 0x22");
+  __asm__ volatile("ecall");
+  __asm__ volatile("mv %0, a0" : "=r"(pv));
+  return pv;
+}
+
+int sem_wait(sem_t id)
+{
+  uint64 pv;
+  __asm__ volatile("mv a1, %0" : : "r"(id));
+  __asm__ volatile("li a0, 0x23");
+  __asm__ volatile("ecall");
+  __asm__ volatile("mv %0, a0" : "=r"(pv));
+  return pv;
+}
+
+int sem_signal(sem_t id)
+{
+  uint64 pv;
+  __asm__ volatile("mv a1, %0" : : "r"(id));
+  __asm__ volatile("li a0, 0x24");
+  __asm__ volatile("ecall");
+  __asm__ volatile("mv %0, a0" : "=r"(pv));
+  return pv;
+}
+
+int sem_trywait(sem_t id)
+{
+  uint64 pv;
+  __asm__ volatile("mv a1, %0" : : "r"(id));
+  __asm__ volatile("li a0, 0x26");
+  __asm__ volatile("ecall");
+  __asm__ volatile("mv %0, a0" : "=r"(pv));
+  return pv;
+}
+
 char getc()
 {
-char c;
+  char c;
   __asm__ volatile ("li a0, 0x41");
   __asm__ volatile ("ecall");
   __asm__ volatile ("mv %0, a0" : "=r"(c));

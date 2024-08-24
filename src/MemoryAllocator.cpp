@@ -2,106 +2,163 @@
 // Created by os on 8/12/24.
 //
 
+#include "../lib/hw.h"
 #include "../h/MemoryAllocator.hpp"
 
-MemoryAllocator::Parce* MemoryAllocator::slobodnaMemorija;
 
-int MemoryAllocator::mem_free(void* memorija)
-{
-    Parce *tmp = (Parce*)memorija - 1;
+DataBlock* MemoryAllocator::free = nullptr;
+DataBlock* MemoryAllocator::used = nullptr;
+int MemoryAllocator::newCalled = 0;
+int MemoryAllocator::newArrayCalled = 0;
+int MemoryAllocator::deleteCalled = 0;
+int MemoryAllocator::deleteArrayCalled = 0;
 
-    if(!MemoryAllocator::slobodnaMemorija)
-    {
-     tmp->sledeci = nullptr;
-     tmp->prethodni = nullptr;
-     MemoryAllocator::slobodnaMemorija = tmp;
-     return 0;
+
+void *MemoryAllocator::mem_alloc(size_t size) {
+    size_t newSize;
+    if(size%MEM_BLOCK_SIZE != 0) {
+        newSize = ((size + MEM_BLOCK_SIZE - 1) / MEM_BLOCK_SIZE) * MEM_BLOCK_SIZE;
+    }
+    else {
+        newSize = size;
     }
 
-    Parce *trenutni = MemoryAllocator::slobodnaMemorija;
+    for(DataBlock* curr = MemoryAllocator::free; curr != nullptr; curr=curr->next) {
+        if(curr->size<newSize) continue;
+        if(curr->size > newSize) {
+            //new fragment needs to be created
+            //novi ce biti offsetovan od curr za novi size i plus za sizeof(DataBlock) zato sto se posle curr
+            // nalazi taj "header"
+            DataBlock *newBlock;
+            newBlock = (DataBlock*) ((char*)curr + newSize + sizeof(DataBlock));
 
-    for(; trenutni < tmp && trenutni->sledeci != nullptr; trenutni = trenutni->sledeci);
+            //Azuriranje free liste
+            if(curr->prev) curr->prev->next = newBlock;
+            else MemoryAllocator::free = newBlock;
+            if(curr->next) curr->next->prev = newBlock;
+            newBlock->prev = curr->prev;
+            newBlock->next = curr->next;
 
-    if(trenutni == slobodnaMemorija)
-    {
-      trenutni->prethodni = tmp;
-      tmp->prethodni = nullptr;
-      tmp->sledeci = trenutni;
-      MemoryAllocator::slobodnaMemorija = tmp;
-      spoji(tmp, tmp->sledeci);
-      return 0;
+            newBlock->size = curr->size - newSize - sizeof(DataBlock);
+            curr->size = newSize;
+
+            //azuriranje USED liste
+            if(used == nullptr) {
+                used = curr;
+                curr->next = nullptr;
+                curr->prev = nullptr;
+            }
+            else if((char*) curr < (char*)used) {
+                //treba da ide pre trenutnog used
+                used->prev = curr;
+                curr->prev = nullptr;
+                curr->next = used;
+                used = curr;
+            }
+            else {
+                //Find place in list
+                DataBlock* currUsed = used;
+                for(; currUsed->next && (char*)(currUsed->next) < (char*) curr; currUsed = currUsed->next);
+
+                curr->next = currUsed->next;
+                curr->prev = currUsed;
+                if(curr->next) curr->next->prev = curr;
+                currUsed->next = curr;
+            }
+        }
+        else {
+            //They are the exact same size
+            //Update FREE list
+            if (curr->prev) curr->prev->next = curr->next;
+            else MemoryAllocator::free = curr->next;
+
+            if(curr->next) curr->next->prev = curr->prev;
+
+            //Update USED list
+            if(used == nullptr) {
+                used = curr;
+                curr->next = nullptr;
+                curr->prev = nullptr;
+            }
+            else if((char*) curr < (char*)used) {
+                //Goes before current used
+                used->prev = curr;
+                curr->prev = nullptr;
+                curr->next = used;
+                used = curr;
+            }
+            else {
+                //Find place in list
+                DataBlock* currUsed = used;
+                for(; currUsed->next && (char*)(currUsed->next) < (char*) curr; currUsed = currUsed->next);
+
+                curr->next = currUsed->next;
+                curr->prev = currUsed;
+                if(curr->next) curr->next->prev = curr;
+                currUsed->next = curr;
+            }
+        }
+        return (char*)curr + sizeof(DataBlock);
     }
-    else
-    {
-      if(tmp > trenutni)
-      {
-        trenutni->sledeci = tmp;
-        tmp->prethodni = trenutni;
-        tmp->sledeci = nullptr;
-        spoji(tmp->prethodni, tmp);
-        return 0;
-      }
-      else
-      {
-        tmp->sledeci = trenutni;
-        tmp->prethodni = trenutni->prethodni;
-        trenutni->prethodni->sledeci = tmp;
-        trenutni->prethodni = tmp;
-        spoji(tmp, tmp->sledeci);
-        spoji(tmp->prethodni, tmp);
-        return 0;
-      }
+    return nullptr; //should not enter here
+}
+
+int MemoryAllocator::mem_free(void* ptr) {
+    if(used == nullptr) return -1;
+    if(ptr == nullptr || ptr < HEAP_START_ADDR || ptr > HEAP_END_ADDR) return -2;
+
+    DataBlock* curr = (DataBlock*)((char*)ptr - sizeof(DataBlock));
+    if(curr < used) return -3;
+
+    //Delete from USED list
+    if(used == curr) {
+        used = curr->next;
+        if(used) used->prev = nullptr;
+        curr->next = nullptr;
+        curr->prev = nullptr;
+    } else {
+        curr->prev->next = curr->next;
+        if(curr->next) curr->next->prev = curr->prev;
+        curr->next = nullptr;
+        curr->prev = nullptr;
     }
 
+    //Insert into FREE list
+    if (free == nullptr) {
+        //Insert as first
+        free = curr;
+        curr->next = nullptr;
+        curr->prev = nullptr;
+    }
+    else if((char*)curr < (char*)free) {
+        free->prev = curr;
+        curr->prev = nullptr;
+        curr->next = free;
+        free = curr;
+        tryToJoin(free);
+    }
+    else {
+        //Find place in list
+        DataBlock* currFree = free;
+        for(currFree = free; currFree->next && (char*)(currFree->next) < (char*) curr; currFree = currFree->next);
+
+        curr->next = currFree->next;
+        curr->prev = currFree;
+        if(curr->next) curr->next->prev = curr;
+        currFree->next = curr;
+        tryToJoin(curr);
+        tryToJoin(currFree);
+    }
+    return 0;
 }
 
-
-void* MemoryAllocator::mem_alloc(size_t velicina)
-{
-  if (velicina < 0 ) return nullptr;
-
-   Parce *trenutni = MemoryAllocator::slobodnaMemorija, *prethodni = nullptr;
-
-   for(; trenutni != nullptr && velicina > trenutni->velicina; prethodni = trenutni, trenutni = trenutni->sledeci);
-
-   if(trenutni == nullptr)
-   return nullptr;
-
-   if(velicina < trenutni->velicina)
-{
-   size_t novoParce = (size_t) trenutni + velicina*MEM_BLOCK_SIZE;
-   Parce *novi = (Parce*) novoParce;
-   novi->velicina = trenutni->velicina - velicina;
-   novi->sledeci = trenutni->sledeci;
-   novi->prethodni = trenutni->prethodni;
-   if (prethodni)
-    prethodni->sledeci = novi;
-   else
-    MemoryAllocator::slobodnaMemorija = novi;
+void MemoryAllocator::tryToJoin(DataBlock *curr) {
+    if(curr->next && (char*)curr + sizeof(DataBlock) + curr->size == (char*)curr->next) {
+        curr->size += curr->next->size + sizeof(DataBlock);
+        curr->next = curr->next->next;
+        if(curr->next) curr->next->prev = curr;
+    }
 }
-   else
-{
-   if(prethodni)
-   prethodni->sledeci = trenutni->sledeci;
-   else
-   MemoryAllocator::slobodnaMemorija = trenutni->sledeci;
-}
-  trenutni->velicina = velicina;
-  Parce *povratni = trenutni + 1;
-  return povratni;
-
-}
-
-void MemoryAllocator::spoji (Parce *trenutni, Parce *sledeci)
-{
-   if(trenutni + trenutni->velicina == sledeci)
-  {
-     trenutni->velicina += sledeci->velicina;
-     trenutni->sledeci = sledeci->sledeci;
-     sledeci->sledeci->prethodni = trenutni;
-  }
-}
-
 
 
 

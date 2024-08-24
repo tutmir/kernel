@@ -28,6 +28,27 @@ private:
 
 };
 
+class Semaphore
+{
+public:
+
+    Semaphore(unsigned init = 1);
+    virtual ~Semaphore();
+    int wait();
+    int signal();
+    int tryWait();
+  private:
+
+  sem_t myHandle;
+
+};
+
+class Console
+{
+  public:
+  static char getc();
+  static void putc(char);
+};
 
 
 #endif

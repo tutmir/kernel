@@ -3,8 +3,9 @@
 //
 
 #include "../h/syscall_c.h"
-#include "../lib/console.h"
 #include "../h/Riscv.hpp"
+#include "../lib/console.h"
+#include "../h/MemoryAllocator.hpp"
 
 extern void userMain();
 
@@ -17,7 +18,8 @@ void wrapperMain(void* argumenti)
 int main() {
 TCB *threads[5];
 
- MemoryAllocator::inicijalizacija();
+
+ MemoryAllocator::initFreeBlock();
  Riscv::w_stvec((uint64) &Riscv::stvecVectorTable | 0b01);
  Riscv::ms_sstatus(Riscv::SSTATUS_SIE);
 

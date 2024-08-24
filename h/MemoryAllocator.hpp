@@ -1,32 +1,48 @@
 #ifndef _MemoryAllocator_
 #define _MemoryAllocator_
+
 #include "../lib/hw.h"
 
+struct DataBlock {
+ DataBlock* next;
+ DataBlock* prev;
+ size_t size;
+};
+
 class MemoryAllocator {
+public:
+ static DataBlock* free;
+ static DataBlock* used;
 
- public :
- struct Parce{
-  size_t velicina;
-  Parce *prethodni, *sledeci;
+ static int newCalled;
+ static int newArrayCalled;
+ static int deleteCalled;
+ static int deleteArrayCalled;
 
- };
+ static void* mem_alloc(size_t size);
 
- static Parce* slobodnaMemorija;
+ static int mem_free (void* ptr);
 
- static int mem_free (void *memorija);
- static void* mem_alloc(size_t velicina);
- static void inicijalizacija()
- {
-  slobodnaMemorija = (Parce*) HEAP_START_ADDR;
-  slobodnaMemorija->sledeci = nullptr;
-  slobodnaMemorija->prethodni = nullptr;
-  slobodnaMemorija->velicina = ((uint64) HEAP_START_ADDR - (uint64) HEAP_END_ADDR)/MEM_BLOCK_SIZE;
+ static void tryToJoin(DataBlock* curr);
+
+ static void initFreeBlock() {
+
+  MemoryAllocator::free = (DataBlock*)((char*)HEAP_START_ADDR);
+  used = nullptr;
+
+  free->next = nullptr;
+  free->prev  = nullptr;
+  free->size = ((char*)HEAP_START_ADDR - (char*)HEAP_END_ADDR - sizeof(DataBlock)); //FOR NOW
+
+
+  //testing purposes
+  newCalled = 0;
+  newArrayCalled = 0;
+  deleteCalled= 0;
+  deleteArrayCalled = 0;
+
  }
- private:
- static void spoji(Parce* trenutni, Parce* sledeci);
-
-
 };
 
 
-#endif
+#endif //memoryAllocator
