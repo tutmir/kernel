@@ -7,7 +7,6 @@
 int MojSemafor::sem_open(sem_t* handle, unsigned init)
 {
   *handle = new MojSemafor(init);
-  printString("Izvrsio new za semafora\n");
   return 0;
 }
 
@@ -17,14 +16,10 @@ MojSemafor::~MojSemafor()
     close();
 }
 
-MojSemafor::MojSemafor(unsigned v)
+MojSemafor::MojSemafor(unsigned int v)
 {
-  printString("Pocetak konstruktora\n");
   vrednost = v;
-  printString("Sredina konstruktora\n");
-  printInt(vrednost);
   otvoren = true;
-  printString("Kraj konstruktora\n");
 }
 
 int MojSemafor::signal()
@@ -33,16 +28,14 @@ int MojSemafor::signal()
     return -1;
 
   TCB *thread;
-  if(++vrednost > 0)
+  if(++vrednost <= 0)
   {
     thread = blokirane.izbaciPrvi();
     if(thread == nullptr)
     {
       return 0;
     }
-    printString("Received thread\n");
     thread->odblokiraj();
-    printString("Unblocked thread\n");
     Scheduler::stavi(thread);
   }
   return 0;

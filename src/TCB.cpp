@@ -23,7 +23,6 @@ void TCB::wrapper()
 
 void TCB::dispatch()
 {
-  printString("Usao u dispatch\n");
   TCB* staraNit = trenutnaNit;
   if(!staraNit->daLiJeZavrsena() && !staraNit->daLiJeBlokirana())
   {

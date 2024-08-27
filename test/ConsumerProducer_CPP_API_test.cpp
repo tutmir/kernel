@@ -79,16 +79,16 @@ public:
 };
 
 void testConsumerProducer() {
-    //char input[30];
+    char input[30];
     int n, threadNum;
 
     printString("Unesite broj proizvodjaca?\n");
-    //getString(input, 30);
-    threadNum = 15;//stringToInt(input);
+    getString(input, 30);
+    threadNum = stringToInt(input);
 
     printString("Unesite velicinu bafera?\n");
-    //getString(input, 30);
-    n = 10;//stringToInt(input);
+    getString(input, 30);
+    n = stringToInt(input);
 
     printString("Broj proizvodjaca ");
     printInt(threadNum);

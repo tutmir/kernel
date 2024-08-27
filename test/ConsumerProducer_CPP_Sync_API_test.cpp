@@ -28,7 +28,7 @@ void ProducerKeyboard::producerKeyboard(void *arg) {
 
     int key;
     int i = 0;
-    while ((key = getc()) != 0x1b && i!=15) {
+    while ((key = getc()) != 0x1b) {
         data->buffer->put(key);
         i++;
 
@@ -110,16 +110,16 @@ void ConsumerSync::consumer(void *arg) {
 }
 
 void producerConsumer_CPP_Sync_API() {
-    //char input[30];
+    char input[30];
     int n, threadNum;
 
     printString("Unesite broj proizvodjaca?\n");
-    //getString(input, 30);
-    threadNum = 5;//stringToInt(input);
+    getString(input, 30);
+    threadNum = stringToInt(input);
 
     printString("Unesite velicinu bafera?\n");
-    //getString(input, 30);
-    n = 10;//stringToInt(input);
+    getString(input, 30);
+    n = stringToInt(input);
 
     printString("Broj proizvodjaca "); printInt(threadNum);
     printString(" i velicina bafera "); printInt(n);

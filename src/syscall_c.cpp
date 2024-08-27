@@ -61,7 +61,8 @@ void Riscv::handleSupervisorTrap()
        __asm__ volatile ("mv %0, a7" : "=r"(argumenti));
 
        pv = TCB::napraviNit(thread, telo, argumenti, stek);
-       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       __asm__ volatile ("mv t0, %0" : : "r"(pv));
+       __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
      //thread_exit
@@ -69,7 +70,8 @@ void Riscv::handleSupervisorTrap()
      {
        pv = 0;
        TCB::trenutnaNit->exit();
-       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       __asm__ volatile ("mv t0, %0" : : "r"(pv));
+       __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
      //thread_dispatch
@@ -98,18 +100,20 @@ void Riscv::handleSupervisorTrap()
        __asm__ volatile ("mv %0, a7" : "=r"(argumenti));
 
        pv = TCB::napraviNitNeZapocni(thread, telo, argumenti, stek);
-       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       __asm__ volatile ("mv t0, %0" : : "r"(pv));
+       __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
      //sem_open
      case 0x21:
      {
        sem_t *handle;
-       uint64 init;
+       int init;
        __asm__ volatile("mv %0, a1" : "=r"(handle));
        __asm__ volatile("mv %0, a2" : "=r"(init));
        pv = MojSemafor::sem_open(handle, init);
-       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       __asm__ volatile ("mv t0, %0" : : "r"(pv));
+       __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
      //sem_close
@@ -118,7 +122,8 @@ void Riscv::handleSupervisorTrap()
        sem_t handle;
        __asm__ volatile("mv %0, a1" : "=r"(handle));
        pv = handle->close();
-       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       __asm__ volatile ("mv t0, %0" : : "r"(pv));
+       __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
      //sem_wait
@@ -127,7 +132,8 @@ void Riscv::handleSupervisorTrap()
        sem_t id;
        __asm__ volatile("mv %0, a1" : "=r"(id));
        pv = id->wait();
-       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       __asm__ volatile ("mv t0, %0" : : "r"(pv));
+       __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
      //sem_signal
@@ -136,7 +142,8 @@ void Riscv::handleSupervisorTrap()
        sem_t id;
        __asm__ volatile("mv %0, a1" : "=r"(id));
        pv = id->signal();
-       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       __asm__ volatile ("mv t0, %0" : : "r"(pv));
+       __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
      //sem_trywait
@@ -145,14 +152,18 @@ void Riscv::handleSupervisorTrap()
        sem_t id;
        __asm__ volatile("mv %0, a1" : "=r"(id));
        pv = id->trywait();
-       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       __asm__ volatile ("mv t0, %0" : : "r"(pv));
+       __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
      //getc
      case 0x41:
      {
-       pv = __getc();
-       __asm__ volatile ("csrw sscratch, %0" : : "r"(pv));
+       //printString("Usao sam u getc u prekidnoj rutini\n");
+       char c;
+       c = __getc();
+       __asm__ volatile ("mv t0, %0" : : "r"(c));
+       __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
      //putc
@@ -263,9 +274,7 @@ void thread_start(TCB* thread)
 int sem_open(sem_t *handle, unsigned init)
 {
   uint64 pv;
-  printString("Init value is: ");
-  printInt(init);
-  printString("\n");
+  putc(' ');
   __asm__ volatile("mv a1, %0" : : "r"(handle));
   __asm__ volatile("mv a2, %0" : : "r"(init));
   __asm__ volatile("li a0, 0x21");
@@ -316,9 +325,11 @@ int sem_trywait(sem_t id)
 
 char getc()
 {
+  //printString("Usao sam u getc\n");
   char c;
   __asm__ volatile ("li a0, 0x41");
   __asm__ volatile ("ecall");
+  //printString("izasao sam iz prekidne rutine\n");
   __asm__ volatile ("mv %0, a0" : "=r"(c));
   return c;
 }

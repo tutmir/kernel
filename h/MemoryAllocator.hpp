@@ -32,10 +32,9 @@ public:
 
   free->next = nullptr;
   free->prev  = nullptr;
-  free->size = ((char*)HEAP_START_ADDR - (char*)HEAP_END_ADDR - sizeof(DataBlock)); //FOR NOW
+  free->size = ((char*)HEAP_START_ADDR - (char*)HEAP_END_ADDR - sizeof(DataBlock));
 
 
-  //testing purposes
   newCalled = 0;
   newArrayCalled = 0;
   deleteCalled= 0;
