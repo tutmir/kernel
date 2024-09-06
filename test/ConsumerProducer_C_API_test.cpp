@@ -1,6 +1,7 @@
 
 #include "../h/syscall_c.h"
 
+
 #include "buffer.hpp"
 
 static sem_t waitForAll;
@@ -15,13 +16,11 @@ static volatile int threadEnd = 0;
 
 static void producerKeyboard(void *arg) {
     struct thread_data *data = (struct thread_data *) arg;
-
     int key;
     int i = 0;
     while ((key = getc()) != 0x1b) {
         data->buffer->put(key);
         i++;
-
         if (i % (10 * data->id) == 0) {
             thread_dispatch();
         }
@@ -35,12 +34,10 @@ static void producerKeyboard(void *arg) {
 
 static void producer(void *arg) {
     struct thread_data *data = (struct thread_data *) arg;
-
     int i = 0;
     while (!threadEnd) {
         data->buffer->put(data->id + '0');
         i++;
-
         if (i % (10 * data->id) == 0) {
             thread_dispatch();
         }
@@ -51,7 +48,6 @@ static void producer(void *arg) {
 
 static void consumer(void *arg) {
     struct thread_data *data = (struct thread_data *) arg;
-
     int i = 0;
     while (!threadEnd) {
         int key = data->buffer->get();

@@ -109,8 +109,8 @@ void Riscv::handleSupervisorTrap()
      {
        sem_t *handle;
        int init;
-       __asm__ volatile("mv %0, a1" : "=r"(handle));
-       __asm__ volatile("mv %0, a2" : "=r"(init));
+       __asm__ volatile("mv %0, a2" : "=r"(handle));
+       __asm__ volatile("mv %0, a1" : "=r"(init));
        pv = MojSemafor::sem_open(handle, init);
        __asm__ volatile ("mv t0, %0" : : "r"(pv));
        __asm__ volatile ("sw t0, 80(x8)");
@@ -274,9 +274,8 @@ void thread_start(TCB* thread)
 int sem_open(sem_t *handle, unsigned init)
 {
   uint64 pv;
-  putc(' ');
-  __asm__ volatile("mv a1, %0" : : "r"(handle));
-  __asm__ volatile("mv a2, %0" : : "r"(init));
+  __asm__ volatile("mv a2, %0" : : "r"(handle));
+  __asm__ volatile("mv a1, %0" : : "r"(init));
   __asm__ volatile("li a0, 0x21");
   __asm__ volatile("ecall");
   __asm__ volatile("mv %0, a0" : "=r"(pv));
