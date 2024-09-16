@@ -39,6 +39,8 @@ int sem_signal(sem_t id);
 
 int sem_trywait(sem_t id);
 
+int time_sleep(time_t vreme);
+
 char getc();
 
 void putc(char c);

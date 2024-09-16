@@ -84,3 +84,4 @@ int MojSemafor::trywait()
     return 0;
   }
 }
+

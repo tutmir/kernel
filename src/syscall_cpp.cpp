@@ -27,7 +27,7 @@ void Thread::dispatch()
 
 int Thread::sleep(time_t t)
 {
-  return 0;
+  return time_sleep(t);
 }
 
 Thread::Thread()

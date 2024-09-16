@@ -3,6 +3,7 @@
 
 #include "syscall_c.h"
 
+
 class Thread
 {
 public:
@@ -20,8 +21,8 @@ static void runWrapper(void* thread)
 protected:
  Thread();
  virtual void run() {};
-private:
  thread_t myHandle;
+private:
  void (*telo)(void*);
  void *argumenti;
 
@@ -48,6 +49,18 @@ class Console
   public:
   static char getc();
   static void putc(char);
+};
+
+class PeriodicThread : public Thread
+{
+  public:
+    void terminate();
+  protected:
+    PeriodicThread(time_t period);
+    virtual void periodicActivation(){}
+  private:
+    time_t period;
+
 };
 
 

@@ -3,23 +3,24 @@
 //
 #include "../h/syscall_c.h"
 #include "../test/printing.hpp"
+#include "../h/MemoryAllocator.hpp"
 void* operator new(size_t velicina)
 {
     //printString("Pozvao new\n");
-    return mem_alloc(velicina);
+    return MemoryAllocator::mem_alloc(velicina);
 }
 
 void* operator new[](size_t velicina)
 {
-    return mem_alloc(velicina);
+    return MemoryAllocator::mem_alloc(velicina);
 }
 
 void operator delete(void* pokazivac) noexcept
 {
-    mem_free(pokazivac);
+    MemoryAllocator::mem_free(pokazivac);
 }
 
 void operator delete[](void* pokazivac) noexcept
 {
-    mem_free(pokazivac);
+    MemoryAllocator::mem_free(pokazivac);
 }

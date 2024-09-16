@@ -8,10 +8,6 @@
 
 DataBlock* MemoryAllocator::free = nullptr;
 DataBlock* MemoryAllocator::used = nullptr;
-int MemoryAllocator::newCalled = 0;
-int MemoryAllocator::newArrayCalled = 0;
-int MemoryAllocator::deleteCalled = 0;
-int MemoryAllocator::deleteArrayCalled = 0;
 
 
 void *MemoryAllocator::mem_alloc(size_t size) {

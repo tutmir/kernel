@@ -2,7 +2,9 @@
 #define _Riscv_
 
 #include "../lib/hw.h"
+#include "ListaUspavanihNiti.hpp"
 
+class ListaUspavanihNiti;
 class Riscv
 {
 public:
@@ -51,7 +53,7 @@ public:
     // write register sip
     static void w_sip(uint64 sip);
 
-    enum BitMaskSstatus
+    enum BitMaskSstatus: uint64
     {
         SSTATUS_SIE = (1 << 1),
         SSTATUS_SPIE = (1 << 5),
@@ -82,9 +84,11 @@ public:
     //write to a0 register
     static void w_a0(uint64 writeValue);
 
+    static void dodajUListu(TCB *nit);
 
 private:
 
+    static ListaUspavanihNiti uspavaneNiti;
     // supervisor trap handler
     static void handleSupervisorTrap();
 

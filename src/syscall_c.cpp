@@ -5,7 +5,9 @@
 #include "../h/syscall_c.h"
 #include "../h/Riscv.hpp"
 #include "../lib/console.h"
+#include "../h/Konzola.hpp"
 #include "../test/printing.hpp"
+
 
 
 void Riscv::handleSupervisorTrap()
@@ -60,7 +62,7 @@ void Riscv::handleSupervisorTrap()
        __asm__ volatile ("mv %0, a4" : "=r"(stek));
        __asm__ volatile ("mv %0, a7" : "=r"(argumenti));
 
-       pv = TCB::napraviNit(thread, telo, argumenti, stek);
+       pv = TCB::napraviNit(thread, telo, argumenti, stek, DEFAULT_TIME_SLICE);
        __asm__ volatile ("mv t0, %0" : : "r"(pv));
        __asm__ volatile ("sw t0, 80(x8)");
        break;
@@ -99,7 +101,7 @@ void Riscv::handleSupervisorTrap()
        __asm__ volatile ("mv %0, a4" : "=r"(stek));
        __asm__ volatile ("mv %0, a7" : "=r"(argumenti));
 
-       pv = TCB::napraviNitNeZapocni(thread, telo, argumenti, stek);
+       pv = TCB::napraviNitNeZapocni(thread, telo, argumenti, stek, DEFAULT_TIME_SLICE);
        __asm__ volatile ("mv t0, %0" : : "r"(pv));
        __asm__ volatile ("sw t0, 80(x8)");
        break;
@@ -156,12 +158,23 @@ void Riscv::handleSupervisorTrap()
        __asm__ volatile ("sw t0, 80(x8)");
        break;
      }
+     //time_sleep
+     case 0x31:
+     {
+       time_t vreme;
+       __asm__ volatile("mv %0, a1" : "=r"(vreme));
+       pv = TCB::uspavajNit(vreme);
+       __asm__ volatile ("mv t0, %0" : : "r"(pv));
+       __asm__ volatile ("sw t0, 80(x8)");
+       break;
+     }
      //getc
      case 0x41:
      {
        //printString("Usao sam u getc u prekidnoj rutini\n");
        char c;
-       c = __getc();
+       //c = __getc();
+       c = Konzola::getCharIn();
        __asm__ volatile ("mv t0, %0" : : "r"(c));
        __asm__ volatile ("sw t0, 80(x8)");
        break;
@@ -171,7 +184,8 @@ void Riscv::handleSupervisorTrap()
      {
        char c;
        __asm__ volatile ("mv %0, a1" : "=r"(c));
-       __putc(c);
+       Konzola::putCharOut(c);
+       //__putc(c);
        break;
      }
      default:{
@@ -210,7 +224,6 @@ void* mem_alloc(size_t size) {
   __asm__ volatile("li a0, 0x01");
   __asm__ volatile("ecall");
 
-  //check this
   void *returnValue;
   __asm__ volatile("mv %0, a0" : "=r"(returnValue));
   return returnValue;
@@ -322,6 +335,16 @@ int sem_trywait(sem_t id)
   return pv;
 }
 
+int time_sleep(time_t vreme)
+{
+  uint64 pv;
+  __asm__ volatile("mv a1, %0" : : "r"(vreme));
+  __asm__ volatile("li a0, 0x31");
+  __asm__ volatile("ecall");
+  __asm__ volatile("mv %0, a0" : "=r"(pv));
+  return pv;
+}
+
 char getc()
 {
   //printString("Usao sam u getc\n");
@@ -342,11 +365,41 @@ void putc(char c)
 }
 
 void Riscv::handleTimerInterrupt() {
-  mc_sip(SIP_SSIP);
+  uint64 scause = r_scause();
+  if(scause == 0x8000000000000001UL)
+    {
+      uspavaneNiti.probudiNiti();
+      mc_sip(SIP_SSIP);
+      TCB::timeSliceBrojac++;
+      if(TCB::timeSliceBrojac >= TCB::trenutnaNit->dohvatiTimeSlice())
+        {
+          uint64 volatile sepc = r_sepc();
+          uint64 volatile sstatus = r_sstatus();
+          TCB::timeSliceBrojac = 0;
+          TCB::dispatch();
+          w_sstatus(sstatus);
+          w_sepc(sepc);
+        }
+    }
 }
 
 void Riscv::handleConsoleInterrupt() {
-  console_handler();
+  uint64 scause = r_scause();
+  if(scause == 0x8000000000000009UL)
+    {
+      uint64 volatile sepc = r_sepc();
+      uint64 volatile sstatus = r_sstatus();
+      uint64 brojPrekida = plic_claim();
+      if(brojPrekida == CONSOLE_IRQ)
+        {
+          while(CONSOLE_RX_STATUS_BIT & (*(char *) CONSOLE_STATUS))
+            Konzola::putCharIn(*(char *) CONSOLE_RX_DATA);
+        }
+        plic_complete((int) brojPrekida);
+        w_sstatus(sstatus);
+        w_sepc(sepc);
+    }
+  //console_handler();
 }
 
 

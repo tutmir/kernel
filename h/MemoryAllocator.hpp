@@ -14,11 +14,6 @@ public:
  static DataBlock* free;
  static DataBlock* used;
 
- static int newCalled;
- static int newArrayCalled;
- static int deleteCalled;
- static int deleteArrayCalled;
-
  static void* mem_alloc(size_t size);
 
  static int mem_free (void* ptr);
@@ -35,10 +30,6 @@ public:
   free->size = ((char*)HEAP_START_ADDR - (char*)HEAP_END_ADDR - sizeof(DataBlock));
 
 
-  newCalled = 0;
-  newArrayCalled = 0;
-  deleteCalled= 0;
-  deleteArrayCalled = 0;
 
  }
 };
